@@ -3,11 +3,11 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 
 # 1. 加载原始基础模型
-base_model_path = "./trainllm/Qwen3.5-0.6B"
+base_model_path = "./Qwen2.5-3B"
 model = AutoModelForCausalLM.from_pretrained(
     base_model_path,
-    torch_dtype=torch.float32,  # CPU用float32
-    device_map="cpu"
+    torch_dtype=torch.bfloat16,  # CPU用float32
+    device_map="cuda"
 )
 tokenizer = AutoTokenizer.from_pretrained(base_model_path)
 

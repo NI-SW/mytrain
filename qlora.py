@@ -1,4 +1,7 @@
 import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+
+import torch
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -10,11 +13,20 @@ from peft import LoraConfig, get_peft_model, TaskType
 from datasets import Dataset
 import json
 def main():
+    # 配置4-bit量化
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16
+    )
 
-    # 1. 加载模型和分词器
+    model = AutoModelForCausalLM.from_pretrained(
+        "./Qwen2.5-3B",  # 替换为你的模型ID，如 "Qwen/Qwen2.5-7B-Instruct"
+        quantization_config=bnb_config,
+        device_map="auto",
+        trust_remote_code=True
+    )
     tokenizer = AutoTokenizer.from_pretrained("./Qwen2.5-3B", trust_remote_code=True)
-    model = AutoModelForCausalLM.from_pretrained("./Qwen2.5-3B", torch_dtype=torch.float16, device_map="auto")
-    model.config.use_cache = False
 
     # 确保设置了pad_token
     if tokenizer.pad_token is None:
@@ -40,8 +52,6 @@ def main():
     dataset = Dataset.from_list(data)
     dataset = dataset.map(format_example)
 
-    print(dataset)
-
     # 对数据进行分词
     def tokenize_function(examples):
         return tokenizer(examples["text"], truncation=True, max_length=512)
@@ -52,7 +62,7 @@ def main():
     peft_config = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
         inference_mode=False,
-        r=2,               # 低秩矩阵的维度，典型值为4, 8, 16
+        r=4,               # 低秩矩阵的维度，典型值为4, 8, 16
         lora_alpha=32,     # LoRA的缩放参数
         lora_dropout=0.1,  # Dropout比例，防止过拟合
         target_modules=["q_proj", "v_proj"]  # 作用于模型的哪些模块
@@ -92,14 +102,6 @@ def main():
     # 6. 保存最终模型
     model.save_pretrained("./qwen-finetuned-final")
     tokenizer.save_pretrained("./qwen-finetuned-final")
-
-
-
-
-
-
-
-
 
 
 
